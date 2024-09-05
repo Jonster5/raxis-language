@@ -1,0 +1,176 @@
+ident:/[a-zA-Z_][a-zA-Z0-9_]*/
+integer:/[0-9]*/
+number:/[0-9]*(?:\.[0-9]*)?/
+string:/".*"/
+
+Root:
+    :Decl*
+
+Comment:
+    // :any* :$
+    /* :any* */
+
+Decl:
+    :ConstDecl:
+        :(pub)? const :ident :Type = :Expr
+    :TypeDecl:
+        :(pub)? type :ident :Type
+    :FunctionDecl:
+        :(pub)? fn :ident :TypeParams? ( :Param? :*<(,)? ) :ReturnType? { :Expr* }
+
+        Param:
+            :ident :Type
+        TypeParams:
+            < :TypeParam? :*<(,)? >
+            TypeParam:
+                :ident :Bounds?
+                Bounds:
+                    impls :Type
+
+    :SystemDecl:
+        :(pub)? system :ident :Schedule? { :Expr* }
+
+        Schedule:
+            in :string
+            on :Type    
+
+Expr:
+    :Literal:
+        :NamedValue: 
+            :ident :Subname?
+
+            Subname: 
+                : :NamedValue
+        :Value:
+            let :ident :Type?
+            var :ident :Type?
+        :Number:
+            :number
+        :String:
+            :string
+        :Struct:
+            :Type { :StructEntries }
+            :{ :StructEntries? }
+
+            StructEntries:
+                :Entry? :*<(,)?
+
+                Entry:
+                    :ident = :Expr
+        :Union:
+            # :ident :ContainedValue?
+            ContainedValue:
+                :Expr?
+        :Lambda:
+            fn ( :LambdaParam? :*<(,)? ) :Type? => :Expr
+            LambdaParam:
+                :ident :Type?
+    :Block:
+        { :Expr* }
+    :Grouped:
+        ( :Expr )
+    :PropertyAccess:
+        :Expr . :ident
+    :FunctionCall:
+        :Expr ( :Expr? :*<(,)? ) 
+    :Postfix:
+        :Expr ? :# leave current scope with a none value
+    :Exponent:
+        :Expr ^ :Expr
+    :Product:
+        :Expr * :Expr
+        :Expr / :Expr
+    :Prefix:
+        - :Expr
+        typeof :Expr
+        not :Expr
+        & :Expr
+    :Sum:
+        :Expr + :Expr
+        :Expr - :Expr
+    :BooleanComparison:
+        :Expr or :Expr
+        :Expr and :Expr
+    :Assignment:
+        :Expr = :Expr
+        :Expr += :Expr
+        :Expr -= :Expr
+        :Expr *= :Expr
+        :Expr /= :Expr
+    :ControlFlow:
+        continue :Expr
+        break :Expr
+        return :Expr
+    :Loop:
+        loop :Label? :Expr? :*<(,)? => :Expr
+    :If:
+        if :Expr => :Expr :Else?
+
+        Else:
+            else :Expr
+        
+    Label:
+        : :ident
+
+
+Type:
+    :NamedType: 
+        :ident :TypeArgs? :SubNamedType?
+        
+        TypeArgs:
+            < :Type :*<(,)?  >
+
+        SubNamedType:
+            : :NamedType
+
+    :Primitive:
+        :Number:
+            int :Precision? :Vector?
+            uint :Precision? :Vector?
+            float :Vector?
+
+            Precision:
+                .4
+                .8
+                .12
+                .16
+
+            Vector:
+                -2
+                -3
+                -4
+        str
+        byte
+        bool
+        void
+        fn ( :Type? :*<(,)? ) :Type
+    :TraitObject:
+        *| :NamedType? :*<(+)?  |
+    :Compound:
+        :Array:
+            [ :Type ; :integer ]
+        :Struct:
+            { :StructField? :*<(,)? }
+            
+            StructField:
+                :ident? :Type :DefaultValue?
+            DefaultValue:
+                = :Expr
+        :Union:
+            #{ :UnionField? :*<(,)? }
+            UnionField:
+                :ident? :Type
+            
+                
+    :Chain:
+        :Prefix :Type
+
+        Prefix:
+            :Pointer:
+                * :(var)?
+            :Slice:
+                []
+            :Engine:
+                component
+                resource
+                payload
